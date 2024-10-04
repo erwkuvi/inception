@@ -1,0 +1,86 @@
+version: '3.6'
+
+services:
+  wordpress:
+    build:
+      context: .
+      dockerfile: requirements/wordpress/Dockerfile
+      args:
+        DB_NAME: ${DB_NAME}
+        DB_USER: ${DB_USER}
+        DB_PASS: ${DB_PASS}
+    container_name: wordpress
+    depends_on:
+      mariadb:
+        condition: service_healthy
+    restart: always
+    networks:
+      - inception
+    volumes:
+      - wp-volume:/var/www
+    environment:
+      DB_NAME: ${DB_NAME}
+      DB_USER: ${DB_USER}
+      DB_PASS: ${DB_PASS}
+    entrypoint: ["/usr/local/bin/wp-config-create.sh"] 
+    command: ["/usr/sbin/php-fpm83", "-F"] 
+
+  nginx:
+    build:
+      context: .
+      dockerfile: requirements/nginx/Dockerfile
+    container_name: nginx
+    depends_on:
+      - wordpress
+    ports:
+      - "443:443"
+    networks:
+      - inception
+    volumes:
+      - ./requirements/nginx/conf/:/etc/nginx/http.d/
+      - ./requirements/nginx/tools:/etc/nginx/ssl/
+      - wp-volume:/var/www/
+
+    restart: always
+
+  mariadb:
+    build:
+      context: .
+      dockerfile: requirements/mariadb/Dockerfile
+      args:
+        DB_NAME: ${DB_NAME}
+        DB_USER: ${DB_USER}
+        DB_PASS: ${DB_PASS}
+        DB_ROOT: ${DB_ROOT}
+    container_name: mariadb
+    ports:
+      - "3306:3306"
+    networks:
+      - inception
+    volumes:
+      - db-volume:/var/lib/mysql
+    restart: always 
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s  # Interval between checks
+      timeout: 5s    # Timeout for each check
+      retries: 5     # How many times to retry
+      start_period: 30s 
+
+
+volumes:
+  wp-volume:
+    driver_opts:
+        o: bind
+        type: none
+        device: /home/${USER}/data/wordpress
+
+  db-volume:
+    driver_opts:
+        o: bind
+        type: none
+        device: /home/${USER}/data/mariadb
+
+networks:
+  inception:
+        driver: bridge
