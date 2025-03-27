@@ -1,0 +1,16 @@
+# Ignore certificate and key files
+*.crt
+*.cer
+*.pem
+*.key
+*.pfx
+*.p12
+
+# Ignore any certs or keys in subdirectories
+**/*.crt
+**/*.cer
+**/*.pem
+**/*.key
+**/*.pfx
+**/*.p12
+
